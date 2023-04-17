@@ -1,16 +1,11 @@
-import json
-import sqlite3
 import telebot
 import configure
 from telebot import types
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
-import re
-from db import BotDB
 import tracemalloc
 tracemalloc.start()
 
 bot = telebot.TeleBot(configure.config['token'])
-db_file = './requests_data.db'
 categories = ["УРС/Манго🥭", "Битрикс24🔹", "Live Agent⭐", "Zoiper🗿", "Другое🤙"]
 confirms = ["Изменить", "Подтвердить"]
 next = ["Назад", "Оставить заявку на подключение"]
@@ -42,15 +37,7 @@ def get_user_profile_link(message):
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    user_name = message.from_user.first_name
-    tg_link = get_user_profile_link(message)
-    bot_db = BotDB(db_file)  # Create an instance of the BotDB class
-    bot_db.add_user(user_name)  # Call the add_user method on the instance
-
-    # Create a list of buttons
-    # Create a reply markup with the list of buttons
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True).add(*categoryButtons)
-    # Send a message with the markup to the user
     bot.send_message(
         message.chat.id,
         "Привет! Я тут чтобы помочь решить тебе твою сложность или оставить запрос на подключение. Чтобы начать выбери программу из списка:",
@@ -59,10 +46,8 @@ def start(message):
 
 @bot.message_handler(func=lambda message: message.text in categories)
 def button_click(message):
-    # Get the text from the button that was clicked
     button = message.text
 
-    # Send a message to the user indicating which button was clicked
     bot.send_message(message.chat.id, f"Ты выбрал: {button}")
 
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True).add(*nextButtons)
@@ -72,7 +57,6 @@ def button_click(message):
     update_category(button)
 
 
-# Define a function to handle registration
 @bot.message_handler(func=lambda message: message.text in next or message.text in confirms)
 def button_click(message):
     button = message.text
@@ -84,11 +68,6 @@ def button_click(message):
     elif button == "Оставить заявку на подключение" or button == "Изменить":
         bot.send_message(message.chat.id, "Введите 9-тизначный код Anydesk:")
         bot.register_next_step_handler(message, get_code)
-
-
-# Define a function to handle registration
-
-# Define a function to handle getting the code
 
 
 def get_code(message):
@@ -155,7 +134,6 @@ def send_request(message):
         message.chat.id,
         'Нажмите на "Start" если хотите отправить еще один запрос:',
         reply_markup=markup)
-    # Here you can save the code and comment to a
 
 
 @bot.message_handler(func=lambda message: message.text == 'Start')
