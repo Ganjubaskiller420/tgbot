@@ -8,15 +8,19 @@ import re
 from db import BotDB
 import tracemalloc
 tracemalloc.start()
+
 bot = telebot.TeleBot(configure.config['token'])
-db_file = 'C:/Users/pingv/Desktop/TeleBot/requests_data.db'
+db_file = './requests_data.db'
 categories = ["УРС/Манго🥭", "Битрикс24🔹", "Live Agent⭐", "Zoiper🗿", "Другое🤙"]
 confirms = ["Изменить", "Подтвердить"]
 next = ["Назад", "Оставить заявку на подключение"]
 nextButtons = [telebot.types.KeyboardButton(nexts) for nexts in next]
 categoryButtons = [telebot.types.KeyboardButton(cate) for cate in categories]
 сonfirmButtons = [telebot.types.KeyboardButton(confirm) for confirm in confirms]
+
 code = None
+description = None
+attached_photo_id = None
 
 
 def update_category(new_category):
@@ -68,27 +72,26 @@ def button_click(message):
 
 
 # Define a function to handle registration
-@bot.message_handler(func=lambda message: message.text in next)
+@bot.message_handler(func=lambda message: message.text in next or message.text in confirms)
 def button_click(message):
     button = message.text
-    if button == "Назад":
+    if button == "Подтвердить":
+        send_request(message)
+    elif button == "Назад":
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True).add(*categoryButtons)
         bot.send_message(message.chat.id, "Выберете другую категорию", reply_markup=markup)
-    elif button == "Оставить заявку на подключение":
+    elif button == "Оставить заявку на подключение" or button == "Изменить":
         bot.send_message(message.chat.id, "Введите 9-тизначный код Anydesk:")
         bot.register_next_step_handler(message, get_code)
 
 
 # Define a function to handle registration
-@bot.message_handler(func=lambda message: message.text in confirms)
-def button_click(message):
-    bot.send_message(message.chat.id, 'Success')
 
 # Define a function to handle getting the code
 
 
 def get_code(message):
-    global code
+    global code, description
     code = message.text
     if len(code) != 9 or not code.isdigit():
         bot.send_message(message.chat.id, "Неверный формат кода, попробуйте снова:")
@@ -97,44 +100,43 @@ def get_code(message):
 
     bot.send_message(message.chat.id, "Введите комментарий:")
     bot.register_next_step_handler(message, get_comment, code)
-    comment = message.text
-    if len(comment) is None:
-        bot.send_message(message.chat.id, "Вы не ввели комментарий, попробуйте снова:")
-        bot.register_next_step_handler(message, get_code)
-        return
-# Define a function to handle getting the comment
 
 
 def get_comment(message, code):
-    # print(message)
-
+    global description, attached_photo_id
     if message.photo:
+        description = message.caption
+        attached_photo_id = message.photo[0].file_id
         bot.send_photo(message.chat.id,
-                       caption=f"Ваш код: {code}\nВаш комментарий: {message.caption}", photo=message.photo[0].file_id)
+                       caption=f"Ваш код: {code}\nВаш комментарий: {description}", photo=attached_photo_id)
     else:
-        bot.send_message(message.chat.id, f"Ваш код: {code}\nВаш комментарий: {message.text}")
+        description = message.text
+        bot.send_message(message.chat.id, f"Ваш код: {code}\nВаш комментарий: {description}")
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True).add(*сonfirmButtons)
     bot.send_message(
         message.chat.id,
         'Подтвердите ваши данные или вернитесь назад чтобы их исправить',
         reply_markup=markup)
-    # bot.register_next_step_handler(message, confirm_comment)
-
-
-def confirm_comment(message):
-    button = message.text
-    if button == "Подтвердить":
-        send_request(message)
 
 
 def send_request(message):
-    global category, code
+    global category, code, description, attached_photo_id
     profile_link = get_user_profile_link(message)
     chat_id = 463344693
-    bot.send_message(
-        chat_id, f"Категория: {category}\nAnydesk: {code}\nТГ: {profile_link}\nКомментарий: {message.text}")
+    caption = f"Категория: {category}\nAnydesk: {code}\nКомментарий: {description}\nTelegram: {profile_link}"
+    if attached_photo_id:
+        bot.send_photo(chat_id, caption=caption, photo=attached_photo_id)
+    else:
+        bot.send_message(chat_id, caption)
+
     bot.send_message(message.chat.id, f"Ваш запрос был принят в обработку, ожидайте пока с вами свяжется мой создатель")
+
+    category = None
+    code = None
+    description = None
+    attached_photo_id = None
+
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Start'))
     bot.send_message(
         message.chat.id,
