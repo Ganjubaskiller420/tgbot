@@ -130,7 +130,7 @@ def get_comment(message, code):
 
 
 def send_request(message):
-    global category, code, description, attached_file_id
+    global category, code, description, attached_file_id, attached_file_type
     profile_link = get_user_profile_link(message)
     chat_id = 463344693
     caption = f"Категория: {category}\nAnydesk: {code}\nКомментарий: {description}\nTelegram: {profile_link}"
