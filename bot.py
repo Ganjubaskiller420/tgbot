@@ -20,7 +20,8 @@ categoryButtons = [telebot.types.KeyboardButton(cate) for cate in categories]
 
 code = None
 description = None
-attached_photo_id = None
+attached_file_id = None
+attached_file_type = None
 
 
 def update_category(new_category):
@@ -98,17 +99,25 @@ def get_code(message):
         bot.register_next_step_handler(message, get_code)
         return
 
-    bot.send_message(message.chat.id, "Введите комментарий:")
+    bot.send_message(message.chat.id, "Введите комментарий (можно прикрепить фото или видео):")
     bot.register_next_step_handler(message, get_comment, code)
 
 
 def get_comment(message, code):
-    global description, attached_photo_id
+    global description, attached_file_id, attached_file_type
+    print(message.video)
     if message.photo:
         description = message.caption
-        attached_photo_id = message.photo[0].file_id
+        attached_file_id = message.photo[0].file_id
+        attached_file_type = 'photo'
         bot.send_photo(message.chat.id,
-                       caption=f"Ваш код: {code}\nВаш комментарий: {description}", photo=attached_photo_id)
+                       caption=f"Ваш код: {code}\nВаш комментарий: {description}", photo=attached_file_id)
+    elif message.video:
+        description = message.caption
+        attached_file_id = message.video.file_id
+        attached_file_type = 'video'
+        bot.send_video(message.chat.id,
+                       caption=f"Ваш код: {code}\nВаш комментарий: {description}", video=attached_file_id)
     else:
         description = message.text
         bot.send_message(message.chat.id, f"Ваш код: {code}\nВаш комментарий: {description}")
@@ -121,12 +130,15 @@ def get_comment(message, code):
 
 
 def send_request(message):
-    global category, code, description, attached_photo_id
+    global category, code, description, attached_file_id
     profile_link = get_user_profile_link(message)
     chat_id = 463344693
     caption = f"Категория: {category}\nAnydesk: {code}\nКомментарий: {description}\nTelegram: {profile_link}"
-    if attached_photo_id:
-        bot.send_photo(chat_id, caption=caption, photo=attached_photo_id)
+    if attached_file_id:
+        if attached_file_type == 'photo':
+            bot.send_photo(chat_id, caption=caption, photo=attached_file_id)
+        else:
+            bot.send_video(chat_id, caption=caption, video=attached_file_id)
     else:
         bot.send_message(chat_id, caption)
 
@@ -135,7 +147,8 @@ def send_request(message):
     category = None
     code = None
     description = None
-    attached_photo_id = None
+    attached_file_id = None
+    attached_file_type = None
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('Start'))
     bot.send_message(
@@ -151,36 +164,3 @@ def start_again(message):
 
 
 bot.polling(none_stop=True, interval=0)
-# @client.message_handler(commands = ['get_info' , 'info'])
-# def get_user_info(message):
-#     markup_inline = types.InlineKeyboardMarkup()
-#     item_yes = types.InlineKeyboardButton(text = 'ДА', callback_data = 'yes')
-#     item_no = types.InlineKeyboardButton(text = 'НЕТ', callback_data = 'no')
-
-#     markup_inline.add(item_yes , item_no)
-#     client.send_message(message.chat.id , "Создатель хочешь инфы?",
-#         reply_markup = markup_inline
-#     )
-
-# @client.callback_query_handler(func = lambda call: True)
-# def answer(call):
-#     if call.data == 'yes':
-#         markup_reply = types.ReplyKeyboardMarkup(resize_keyboard = True)
-#         item_id = types.KeyboardButton('МОЙ ID')
-#         item_username = types.KeyboardButton('Мой ник')
-
-#         markup_reply.add(item_id , item_username)
-#         client.send_message(call.message.chat.id, 'Нажмите на одну из кнопок',
-#             reply_markup = markup_reply
-#             )
-#     elif call.data == "no":
-#         pass
-
-# @client.message_handler(content_types = ['text'])
-# def get_text(message):
-#     # if message.text.lower() == 'привет':
-#     #     client.send_message(message.chat.id, 'Привет , создатель')
-#     if message.text == 'МОЙ ID':
-#         client.send_message(message.chat.id , f'Your ID: {message.from_user.id}')
-#     elif message.text == 'Мой ник':
-#         client.send_message(message.chat.id , f'Your ID: {message.from_user.first_name} {message.from_user.last_name}')
